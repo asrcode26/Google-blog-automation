@@ -1,40 +1,42 @@
-import os
-import requests
-from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
-# Set up required scopes for Google API
-SCOPES = ['https://www.googleapis.com/auth/blogger']
+# Path to your client secret JSON file
+CLIENT_SECRET_FILE = 'client_secret.json'
 
+# Replace this with your Blogger blog ID
+BLOG_ID = '376398700167798008'
 
-def authenticate():
-    creds = None
-    # Check if token.json exists for saved credentials
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file('client_secret.json', SCOPES)
-            creds = flow.run_local_server(port=0)
-            # Save the credentials for future use
-            with open('token.json', 'w') as token:
-                token.write(creds.to_json())
-
-    return creds
-
+# Post details
+POST_TITLE = "Test Post"
+POST_CONTENT = "<p>This is a test post made using the Blogger API and OAuth 2.0 with client_secret.json.</p>"
 
 def main():
-    # Authenticate and get credentials
-    creds = authenticate()
+    # Scopes required for Blogger API
+    SCOPES = ["https://www.googleapis.com/auth/blogger"]
 
-    # Now you can use `creds` to make API calls
-    print("Authentication successful!")
+    # Authenticate and obtain credentials
+    flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES)
+    credentials = flow.run_local_server(port=0)
 
+    # Build the Blogger API client
+    blogger_service = build('blogger', 'v3', credentials=credentials)
 
-if __name__ == '__main__':
+    # Create a test post
+    post_body = {
+        "kind": "blogger#post",
+        "title": POST_TITLE,
+        "content": POST_CONTENT,
+    }
+
+    try:
+        # Insert the post into the blog
+        post = blogger_service.posts().insert(blogId=BLOG_ID, body=post_body).execute()
+        print(f"Post published! Post ID: {post['id']}")
+        print(f"Post URL: {post['url']}")
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+
+if __name__ == "__main__":
     main()
